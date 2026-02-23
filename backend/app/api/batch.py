@@ -1,10 +1,7 @@
-from fastapi import APIRouter, File, UploadFile, HTTPException
+from fastapi import APIRouter, File, UploadFile, HTTPException, Query
 
 from app.services.resume_parser import extract_text_from_pdf
-from app.services.batch_analyzer import (
-    parse_jobs_csv,
-    analyze_resume_against_jobs,
-)
+from app.services.batch_analyzer import parse_jobs_csv, analyze_resume_against_jobs
 
 router = APIRouter(prefix="/batch", tags=["batch"])
 
@@ -13,17 +10,38 @@ router = APIRouter(prefix="/batch", tags=["batch"])
 async def analyze(
     resume_pdf: UploadFile = File(...),
     jobs_file: UploadFile = File(...),
+    debug: bool = Query(False, description="Return debug info about extracted resume text"),
 ):
-    if not resume_pdf.filename.lower().endswith(".pdf"):
-        raise HTTPException(status_code=400, detail="Resume must be PDF")
+    try:
+        resume_bytes = await resume_pdf.read()
+        jobs_bytes = await jobs_file.read()
 
-    if not jobs_file.filename.lower().endswith(".csv"):
-        raise HTTPException(status_code=400, detail="Jobs file must be CSV")
+        resume_text = extract_text_from_pdf(resume_bytes)
+        if not resume_text or len(resume_text.strip()) < 30:
+            raise HTTPException(
+                status_code=400,
+                detail="Could not extract enough text from resume PDF. If it's scanned/image-based, OCR is needed.",
+            )
 
-    resume_bytes = await resume_pdf.read()
-    jobs_bytes = await jobs_file.read()
+        jobs = parse_jobs_csv(jobs_bytes)
+        if not jobs:
+            raise HTTPException(status_code=400, detail="No jobs found in CSV")
 
-    resume_text = extract_text_from_pdf(resume_bytes)
-    jobs = parse_jobs_csv(jobs_bytes)
+        result = analyze_resume_against_jobs(resume_text, jobs)
 
-    return analyze_resume_against_jobs(resume_text, jobs)
+        if debug:
+            low = resume_text.lower()
+            result["_debug"] = {
+                "resume_text_length": len(resume_text),
+                "contains_cirq": ("cirq" in low),
+                "contains_benchmark": ("benchmark" in low),
+                "contains_benchmarked": ("benchmarked" in low),
+                "snippet": resume_text[:800],  # first 800 chars to inspect extraction quality
+            }
+
+        return result
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Batch analyze failed: {e}")
