@@ -37,19 +37,6 @@ The system:
 4.  Identifies missing keywords
 5.  Ranks the best job matches
 
-Example output:
-
-``` json
-{
-  "job_id": 1,
-  "title": "QPU Architect",
-  "company": "eleQtron",
-  "match_score": 72.4,
-  "matched_keywords": ["python", "quantum", "compiler"],
-  "missing_keywords": ["error correction", "cirq"]
-}
-```
-
 ------------------------------------------------------------------------
 
 # Features
@@ -203,13 +190,5 @@ This project demonstrates:
 
 ------------------------------------------------------------------------
 
-# Authors
 
-Developer 1 --- Software Development / Python / ML\
-Developer 2 --- DevOps / Infrastructure / Containers
 
-------------------------------------------------------------------------
-
-# License
-
-MIT License
