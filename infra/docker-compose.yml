@@ -1,0 +1,16 @@
+services:
+  api:
+    build:
+      context: ..
+      dockerfile: backend/Dockerfile
+    ports:
+      - "8000:8000"
+    environment:
+      - PYTHONUNBUFFERED=1
+      # Your database.py currently hardcodes sqlite:///./app.db
+      # so we don't set DATABASE_URL yet (optional improvement later).
+    volumes:
+      # Hot-reload development: code changes reflect inside container
+      - ../backend:/app
+    command: >
+      uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
